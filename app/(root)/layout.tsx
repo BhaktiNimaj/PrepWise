@@ -1,13 +1,16 @@
-'use client';
-import {redirect} from "next/navigation";
+// ❌ Remove this:
+// 'use client'
+
+import { redirect } from "next/navigation";
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import {isAuthenticated} from "@/lib/actions/auth.action";
+import { isAuthenticated } from "@/lib/actions/auth.action";
 
 const RootLayout = async ({ children }: { children: ReactNode }) => {
-    const isUserAuthenticated= await isAuthenticated();
-    if(isUserAuthenticated) redirect('/');
+    const isUserAuthenticated = await isAuthenticated();
+    if (isUserAuthenticated) redirect('/');
+
     return (
         <div className="min-h-screen bg-black text-white">
             <nav className="p-4 border-b border-gray-800 bg-black">

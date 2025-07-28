@@ -11,9 +11,11 @@
   "dependencies": {
     "-": "^0.0.1",
     "@ai-sdk/google": "^1.2.22",
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.1.1",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-slot": "^1.2.3",
+    "@vapi-ai/web": "^2.3.8",
     "ai": "^4.3.19",
     "animate": "^1.0.0",
     "class-variance-authority": "^0.7.1",
