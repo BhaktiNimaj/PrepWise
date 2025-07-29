@@ -27,14 +27,23 @@ export async function signUp(params: SignUpParams) {
             success: true,
             message: "User created successfully. Please sign in.",
         };
-    } catch (error: any) {
-        console.error("Error creating an user", error);
+    } catch (error: unknown) {
+        console.error("Error creating user:", error);
 
-        if (error.code === "auth/email-already-exists") {
-            return {
-                success: false,
-                message: "This email is already in use.",
-            };
+        if (
+            typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            typeof (error as { code: unknown }).code === "string"
+        ) {
+            const errorCode = (error as { code: string }).code;
+
+            if (errorCode === "auth/email-already-exists") {
+                return {
+                    success: false,
+                    message: "This email is already in use.",
+                };
+            }
         }
 
         return {
@@ -58,7 +67,7 @@ export async function signIn(params: SignInParams) {
         }
 
         await setSessionCookie(idToken);
-    } catch (error: any) {
+    } catch (error) {
         console.log(error);
 
         return {
@@ -105,7 +114,7 @@ export async function getCurrentUser(): Promise<User | null> {
             ...userRecord.data(),
             id: userRecord.id,
         } as User;
-    } catch (error: any) {
+    } catch (error){
         console.log(error);
 
         return null;

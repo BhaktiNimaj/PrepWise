@@ -1,32 +1,33 @@
-// components/CustomFormField.tsx
-import React from 'react';
-import { Controller } from "react-hook-form";
+import React from "react";
 import {
     FormControl,
     FormDescription,
+    FormField,
     FormItem,
     FormLabel,
-    FormMessage
+    FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { UseFormReturn } from "react-hook-form";
 
-const CustomFormField = ({ control, name, label, placeholder }: {
-    control: any;
-    name: string;
-    label: string;
-    placeholder: string;
-}) => {
+interface UsernameFieldProps {
+    form: UseFormReturn<{ username: string }>;
+}
+
+const UsernameField = ({ form }: UsernameFieldProps) => {
     return (
-        <Controller
-            control={control}
-            name={name}
+        <FormField
+            control={form.control}
+            name="username"
             render={({ field }) => (
                 <FormItem>
-                    <FormLabel>{label}</FormLabel>
+                    <FormLabel>Username</FormLabel>
                     <FormControl>
-                        <Input placeholder={placeholder} {...field} />
+                        <Input placeholder="shadcn" {...field} />
                     </FormControl>
-                    <FormDescription>This is your public display name.</FormDescription>
+                    <FormDescription>
+                        This is your public display name.
+                    </FormDescription>
                     <FormMessage />
                 </FormItem>
             )}
@@ -34,4 +35,4 @@ const CustomFormField = ({ control, name, label, placeholder }: {
     );
 };
 
-export default CustomFormField;
+export default UsernameField;

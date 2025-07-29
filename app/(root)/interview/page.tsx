@@ -7,8 +7,11 @@ async function Page() {
     return (
         <>
             <h3>Interview Generation</h3>
-
-            <Agent userName={user?.name} userId={user?.id} type="generate" />
+            <Agent
+                userName={user?.name ?? "Guest"} // fallback if user is null/undefined
+                userId={user?.id ?? "unknown"}   // fallback id
+                type="generate"
+            />
         </>
     );
 }
