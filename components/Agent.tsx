@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { vapi } from "@/lib/vapi.sdk";
 import { createFeedback } from "@/lib/actions/general.action";
-import { interviewer } from "@/constants";
 
 enum CallStatus {
     INACTIVE = "INACTIVE",
@@ -26,6 +25,7 @@ function Agent({ userName, userId, type, interviewId, questions }: AgentProps) {
     const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
     const [messages, setMessages] = useState<SavedMessage[]>([]);
 
+    // Vapi Event Bindings
     useEffect(() => {
         const onCallStart = () => setCallStatus(CallStatus.ACTIVE);
         const onCallEnd = () => setCallStatus(CallStatus.FINISHED);
@@ -39,7 +39,7 @@ function Agent({ userName, userId, type, interviewId, questions }: AgentProps) {
 
         const onSpeechStart = () => setIsSpeaking(true);
         const onSpeechEnd = () => setIsSpeaking(false);
-        const onError = (error: Error) => console.log("Error", error);
+        const onError = (error: Error) => console.error("Vapi Error:", error);
 
         vapi.on("call-start", onCallStart);
         vapi.on("call-end", onCallEnd);
@@ -58,6 +58,7 @@ function Agent({ userName, userId, type, interviewId, questions }: AgentProps) {
         };
     }, []);
 
+    // Save Feedback
     const handleGenerateFeedback = async (messages: SavedMessage[]) => {
         const { success, feedbackId: id } = await createFeedback({
             interviewId: interviewId!,
@@ -68,13 +69,14 @@ function Agent({ userName, userId, type, interviewId, questions }: AgentProps) {
         if (success && id) {
             router.push(`/interview/${interviewId}/feedback`);
         } else {
-            console.log("Error saving feedback.");
+            console.error("Error saving feedback.");
             router.push("/");
         }
     };
 
+    // Auto-navigate after call ends
     useEffect(() => {
-        if (callStatus === CallStatus.FINISHED) {
+        if (callStatus === CallStatus.FINISHED && messages.length > 0) {
             if (type === "generate") {
                 router.push("/");
             } else {
@@ -83,31 +85,50 @@ function Agent({ userName, userId, type, interviewId, questions }: AgentProps) {
         }
     }, [messages, callStatus, type, userId]);
 
+    // Start Call
     const handleCall = async () => {
-        setCallStatus(CallStatus.CONNECTING);
+        if (callStatus === CallStatus.CONNECTING || callStatus === CallStatus.ACTIVE) {
+            console.warn("Call already in progress");
+            return;
+        }
 
-        if (type === "generate") {
-            await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
-                variableValues: { username: userName, userid: userId },
-            });
-        } else {
-            let formattedQuestions = "";
+        try {
+            setCallStatus(CallStatus.CONNECTING);
 
-            if (questions) {
-                formattedQuestions = questions.map((q) => `- ${q}`).join("\n");
+            if (type === "generate") {
+                const workflowId = process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID;
+                if (!workflowId) throw new Error("Missing VAPI workflow ID");
+
+                await vapi.start(workflowId, {
+                    variableValues: { username: userName, userid: userId },
+                });
+            } else {
+                const workflowId = process.env.NEXT_PUBLIC_INTERVIEWER_WORKFLOW_ID;
+                if (!workflowId) throw new Error("Missing Interviewer workflow ID");
+
+                let formattedQuestions = "";
+                if (questions?.length) {
+                    formattedQuestions = questions.map((q) => `- ${q}`).join("\n");
+                }
+
+                await vapi.start(workflowId, {
+                    variableValues: { questions: formattedQuestions },
+                });
             }
-
-            await vapi.start(process.env.NEXT_PUBLIC_INTERVIEWER_WORKFLOW_ID!, {
-                variableValues: {
-                    questions: formattedQuestions,
-                },
-            });
+        } catch (err: any) {
+            console.error("Failed to start call:", err?.message || err);
+            setCallStatus(CallStatus.INACTIVE);
         }
     };
 
+    // Stop Call
     const handleDisconnect = async () => {
-        setCallStatus(CallStatus.FINISHED);
-        vapi.stop();
+        try {
+            await vapi.stop();
+            setCallStatus(CallStatus.FINISHED);
+        } catch (err) {
+            console.error("Failed to disconnect:", err);
+        }
     };
 
     const latestMessage = messages[messages.length - 1]?.content;
@@ -116,6 +137,7 @@ function Agent({ userName, userId, type, interviewId, questions }: AgentProps) {
 
     return (
         <>
+            {/* Call UI */}
             <div className="call-view">
                 <div className="card-interviewer">
                     <div className="avatar">
@@ -145,6 +167,7 @@ function Agent({ userName, userId, type, interviewId, questions }: AgentProps) {
                 </div>
             </div>
 
+            {/* Transcript */}
             {messages.length > 0 && (
                 <div className="transcript-border">
                     <div className="transcript">
@@ -161,15 +184,16 @@ function Agent({ userName, userId, type, interviewId, questions }: AgentProps) {
                 </div>
             )}
 
+            {/* Buttons */}
             <div className="w-full flex justify-center">
-                {callStatus !== "ACTIVE" ? (
+                {callStatus !== CallStatus.ACTIVE ? (
                     <button className="relative btn-call" onClick={handleCall}>
-                        <span
-                            className={cn(
-                                "absolute animate-ping rounded-full opacity-75",
-                                callStatus !== "CONNECTING" && "hidden"
-                            )}
-                        />
+            <span
+                className={cn(
+                    "absolute animate-ping rounded-full opacity-75",
+                    callStatus !== CallStatus.CONNECTING && "hidden"
+                )}
+            />
                         <span>{isCallInactiveOrFinished ? "Call" : ". . ."}</span>
                     </button>
                 ) : (

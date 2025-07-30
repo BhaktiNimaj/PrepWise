@@ -1,20 +1,37 @@
 import InterviewCard from "@/components/InterviewCard";
 import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/actions/auth.action";
+import {
+    getInterviewsByUserId,
+    getLatestInterviews,
+} from "@/lib/actions/general.action";
 import Image from "next/image";
 import Link from "next/link";
-import { dummyInterviews } from "@/constants";
 
-const Page = () => {
+async function Page() {
+    const user = await getCurrentUser();
+    const userId = user?.id ?? ""; // Safe fallback
+
+    const [userInterviewsRaw, latestInterviewsRaw] = await Promise.all([
+        getInterviewsByUserId(userId),
+        getLatestInterviews({ userId }),
+    ]);
+
+    const userInterviews = userInterviewsRaw ?? [];
+    const latestInterviews = latestInterviewsRaw ?? [];
+
+    const hasPastInterviews = userInterviews.length > 0;
+    const hasUpcomingInterviews = latestInterviews.length > 0;
+
     return (
-        <div className="bg-black text-white min-h-screen px-4 py-8 space-y-16">
-            {/* Hero Section */}
-            <section className="flex flex-col-reverse md:flex-row justify-between items-center gap-10 bg-gray-900 p-6 rounded-xl">
-                <div className="flex flex-col gap-6 max-w-xl">
-                    <h2 className="text-3xl font-bold">Get Interview-Ready with AI-Powered Practice & Feedback</h2>
-                    <p className="text-lg text-gray-300">
+        <>
+            <section className="card-cta">
+                <div className="flex flex-col gap-6 max-w-lg">
+                    <h2>Get Interview-Ready with AI-Powered Practice & Feedback</h2>
+                    <p className="text-lg">
                         Practice on real interview questions & get instant feedback
                     </p>
-                    <Button asChild className="btn-primary bg-blue-600 hover:bg-blue-700 text-white max-sm:w-full">
+                    <Button asChild className="btn-primary max-sm:w-full">
                         <Link href="/interview">Start an Interview</Link>
                     </Button>
                 </div>
@@ -28,35 +45,35 @@ const Page = () => {
                 />
             </section>
 
-            {/* Past Interviews Section */}
-            <section className="space-y-6">
-                <h2 className="text-2xl font-semibold">Your Interviews</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {dummyInterviews.length > 0 ? (
-                        dummyInterviews.map((interview) => (
-                            <InterviewCard key={interview.id} {...interview} />
+            {/* ✅ Your Interviews (from Firestore) */}
+            <section className="flex flex-col gap-6 mt-8">
+                <h2>Your Interviews</h2>
+                <div className="interviews-section">
+                    {hasPastInterviews ? (
+                        userInterviews.map((interview) => (
+                            <InterviewCard {...interview} key={interview.id} />
                         ))
                     ) : (
-                        <p className="text-gray-400">No past interviews available.</p>
+                        <p>You haven&apos;t taken any interviews yet</p>
                     )}
                 </div>
             </section>
 
-            {/* Upcoming Interviews Section */}
-            <section className="space-y-6">
-                <h2 className="text-2xl font-semibold">Take an Interview</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {dummyInterviews.length > 0 ? (
-                        dummyInterviews.map((interview) => (
-                            <InterviewCard key={interview.id} {...interview} />
+            {/* ✅ Take an Interview (from Firestore) */}
+            <section className="flex flex-col gap-6 mt-8">
+                <h2>Take an Interview</h2>
+                <div className="interviews-section">
+                    {hasUpcomingInterviews ? (
+                        latestInterviews.map((interview) => (
+                            <InterviewCard {...interview} key={interview.id} />
                         ))
                     ) : (
-                        <p className="text-gray-400">No new interviews available.</p>
+                        <p>There are no new interviews available</p>
                     )}
                 </div>
             </section>
-        </div>
+        </>
     );
-};
+}
 
 export default Page;

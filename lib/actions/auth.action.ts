@@ -1,3 +1,4 @@
+// ✅ Updated and Debugged Firebase Server Actions
 "use server";
 
 import { db, auth } from "@/firebase/admin";
@@ -81,7 +82,7 @@ export async function setSessionCookie(idToken: string) {
     const cookieStore = await cookies();
 
     const sessionCookie = await auth.createSessionCookie(idToken, {
-        expiresIn: ONE_WEEK * 1000, // 7 days
+        expiresIn: ONE_WEEK * 1000,
     });
 
     cookieStore.set("session", sessionCookie, {
@@ -95,34 +96,66 @@ export async function setSessionCookie(idToken: string) {
 
 export async function getCurrentUser(): Promise<User | null> {
     const cookieStore = await cookies();
-
     const sessionCookie = cookieStore.get("session")?.value;
-
     if (!sessionCookie) return null;
 
     try {
         const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
-
-        const userRecord = await db
-            .collection("users")
-            .doc(decodedClaims.uid)
-            .get();
-
+        const userRecord = await db.collection("users").doc(decodedClaims.uid).get();
         if (!userRecord.exists) return null;
 
         return {
             ...userRecord.data(),
             id: userRecord.id,
         } as User;
-    } catch (error){
+    } catch (error) {
         console.log(error);
-
         return null;
     }
 }
 
 export async function isAuthenticated() {
     const user = await getCurrentUser();
-
     return !!user;
+}
+
+export async function getInterviewsByUserId(userId: string): Promise<Interview[] | null> {
+    try {
+        const interviews = await db
+            .collection("interviews")
+            .where("userId", "==", userId)
+            .orderBy("createdAt", "desc")
+            .get();
+
+        return interviews.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        })) as Interview[];
+    } catch (err) {
+        console.error("Error fetching user interviews:", err);
+        return null;
+    }
+}
+
+export async function getLatestInterviews(params: GetLatestInterviewsParams): Promise<Interview[] | null> {
+    const { userId, limit = 10 } = params;
+
+    try {
+        const interviews = await db
+            .collection("interviews")
+            .where("finalized", "==", true)
+            .where("userId", "!=", userId)
+            .orderBy("userId")
+            .orderBy("createdAt", "desc")
+            .limit(limit)
+            .get();
+
+        return interviews.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        })) as Interview[];
+    } catch (error) {
+        console.error("Error fetching latest interviews:", error);
+        return null;
+    }
 }
